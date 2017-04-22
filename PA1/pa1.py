@@ -1,6 +1,8 @@
 import pandas as pd
 from scipy.stats import norm, chisquare
 from math import sqrt
+import statsmodels.api as sm
+from matplotlib import pyplot as plt
 
 
 # def compute_association_statistics(n, p_pos, p_neg):
