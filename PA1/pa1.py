@@ -144,8 +144,8 @@ with open('./output.txt', 'w') as output_file:
     for x in p_values_significant:
         output_file.write(str(x[0]) + ':' + str(x[1])+ '\n')
     output_file.write('</B>'+ '\n')
-    output_file.write('</C>'+ '\n')
-    output_file.write('Lambda_gc:' + str(gc))
+    output_file.write('<C>'+ '\n')
+    output_file.write('Lambda_gc:' + str(gc) + '\n')
     output_file.write('</C>'+ '\n')
 
 
