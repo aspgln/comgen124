@@ -142,10 +142,10 @@ with open('./output.txt', 'w') as output_file:
     output_file.write('</A>'+ '\n')
     output_file.write('<B>'+ '\n')
     for x in p_values_significant:
-        output_file.write(str(x[0]) + ':' + str(x[1])+ '\n')
+        output_file.write(str(x[0]) + ':' + str(x[1]) + '\n')
     output_file.write('</B>'+ '\n')
     output_file.write('<C>'+ '\n')
     output_file.write('Lambda_gc:' + str(gc) + '\n')
-    output_file.write('</C>'+ '\n')
+    output_file.write('</C>' + '\n')
 
 
