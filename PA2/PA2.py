@@ -1,153 +1,99 @@
 import pandas as pd
-from scipy.stats import norm, chisquare
+import numpy as np
 from math import sqrt
-import statsmodels.api as sm
-from matplotlib import pyplot as plt
-
-
-# def compute_association_statistics(n, p_pos, p_neg):
-#     p = (p_pos + p_neg) / 2
-#     s = (p_pos - p_neg) / (sqrt(2 / n) * sqrt(p * (1 - p)))
-#     return s
-
-
-def compute_frequency(df, n):
-    if 1 in df.index and 2 in df.index:
-        # print('b[1]', b[1])
-        # print('b[2]', b[2])
-        p = (df[1] + 2 * df[2]) / n
-    elif 1 in df.index:
-        # print('b[1]', b[1])
-        p = (df[1]) / n
-
-    elif 2 in df.index:
-        # print('b[2]', b[2])
-        p = ( 2 * df[2]) / n
-    else:
-        # print('none')
-        p = 1
-
-    return p
+from scipy.stats import norm
+from sklearn import preprocessing
 
 
 
-def compute_association_statistics(n, case, control):
-
-    p_pos = compute_frequency(case, n)
-    # print('p_pos = ', p_pos)
-    p_neg = compute_frequency(control, n)
-    # print('p_neg = ', p_neg)
-
-    if (p_pos != 1) and (p_neg != 1):
-        p = (p_pos + p_neg) / 2
-        s = ((p_pos - p_neg) / (sqrt(2 / n) * sqrt(p * (1 - p) ) ) )
-
-    else :
-        s = 0
-
-
-    return s
-
-
-
-
-
-input_file = "SNP_status.txt"
+input_file = "gwas_data.txt"
 # delimiter=' ':    space separated
 # index_col = 0:    use the first column as row names
 # usecols=list(range(0, 100000)): Return a subset of the columns, specified by column number [0, 1, 2, ... 100000]
 # low_memory=False: use low memory
-# a = read_csv(input_file, delimiter=' ', index_col=0, usecols=list(range(0, 100002)), low_memory=False,  nrows=10)
-df = pd.read_csv(input_file, delimiter=' ', index_col=0, usecols=list(range(0, 100002)), low_memory=False)
+# a = read_csv(input_file, delimiter=' ', index_col=0, usecols=list(range(0, 9511)), low_memory=False,  nrows=10)
+df = pd.read_csv(input_file, delimiter=' ', index_col=0, usecols=list(range(0, 9511)), low_memory=False)
+(m,n) = df.shape
+
+print (m,n)
+# m is number of individuals
+# n-1 is number of SNPs
+df = df.astype(float)
+matrix = df.as_matrix()
+X = np.array(matrix)
+X_scaled = preprocessing.scale(X)
+
+df_scaled = df
+phenotype = df['Phenotype']
+
+# print (phenotype)
+for i in range(0, n-1):
+    if i %400 == 0:
+        print(i)
+    for j in range(0, m):
+        df_scaled.iloc[j, i] = X_scaled[j][i]
+SNPs = df_scaled.iloc[:,0:n-1]
+# print (SNPs)
+# print(df['Phenotype'].value_counts())
+
+mu = phenotype / m
+
+SNPs_transpose = SNPs.transpose()
+beta =  SNPs_transpose.dot(phenotype)
+e = phenotype - mu - SNPs.dot(beta)
+et = e.transpose()
+sigma2 = (et.dot(e)) / (m-2)
+sigma = sqrt(sigma2)
+S = beta * sqrt(m) / sigma
+
+# print(df_scaled)
+xi = SNPs.iloc[0]
+xj = SNPs.iloc[1]
+# calculate norm of each individual
+a = np.sqrt(np.square(SNPs).sum(axis=1))
+kin_matrix = pd.DataFrame(np.nan, index= list(range(0, m)), columns=list(range(0, m)))
+
+# kin_matrix = pd.DataFrame(np.nan, index=list(range(0, m)), columns=list(range(0,m))))
+
+i_norm = np.sqrt(np.square(SNPs).sum(axis=1))
+for i in range (0,m):
+    for j in range(0, m):
+        dot_product = SNPs.iloc[i].dot(SNPs.iloc[j])
+        kin_matrix[i][j] = dot_product / (m * i_norm[i] * i_norm[j])
+# print(kin_matrix)
+a = kin_matrix.mean()
+# print(a)
+avg_k = a.mean()
+# print(avg_k)
+
 
 alpha = 0.05
-N = 2000
-alpha_s = alpha/100000
+alpha_s = alpha / (n-1)
 threshold = -norm.ppf(alpha_s / 2)
-
-# split the dataframne by Case and Control
-case = df[df['Status'] == 'Case']
-control = df[df['Status'] == 'Control']
-
-# print(case)
-# print(control)
-p_values = []
+print(threshold)
 p_values_significant = []
-chi_square = []
-for i in range(0,100000):
-    # print(i)
-    if i < 10:
 
-        SNPname = 'SNP0000{}'.format(i)
-    elif i < 100:
-        SNPname = 'SNP000{}'.format(i)
-    elif i < 1000:
-        SNPname = 'SNP00{}'.format(i)
-    elif i < 10000:
-        SNPname = 'SNP0{}'.format(i)
-    else:
-        if i == 10000:
-            print(10000)
-        elif i == 20000:
-            print(20000)
-        elif i == 30000:
-            print(30000)
-        elif i == 40000:
-            print(40000)
-        elif i == 50000:
-            print(50000)
-        elif i == 60000:
-            print(60000)
-        elif i == 70000:
-            print(70000)
-        elif i == 80000:
-            print(80000)
-        elif i == 90000:
-            print(90000)
-        SNPname = 'SNP{}'.format(i)
+for i in range(0,n-1):
+    if (S[i] > threshold or S[i] < threshold * (-1) )  :
+        p_values_significant.append([S.index[i], S[i]])
 
 
 
-
-
-    a = case[SNPname].value_counts()
-    b = control[SNPname].value_counts()
-    # print(a)
-    # print(b)
-
-
-    s = compute_association_statistics(N, a, b)
-
-    # print (s, '\n\n\n')
-    p_values.append([SNPname, s])
-    c2 = s*s
-    chi_square.append(c2)
-    if (s > threshold):
-        p_values_significant.append([SNPname, s])
-
-
-chi_square.sort()
-median = (chi_square[49999] + chi_square[50000]) / 2
-
-for i in range(0,100000):
-    chi_square.append(p_values[i][1] * p_values[i][1])
-median2 = 49/81
-
-gc = median / median2
+# print(p_values_significant)
 
 
 
 with open('./output.txt', 'w') as output_file:
     output_file.write('<A>\n')
-    for x in p_values:
-        output_file.write(str(x[0]) + ':' + str(x[1]) + '\n')
-    output_file.write('</A>'+ '\n')
+    for i in range(0, n-1):
+        output_file.write(str(S.index[i])+ ':' + str(S[i]) + '\n')
+    output_file.write('</A>' + '\n')
     output_file.write('<B>'+ '\n')
     for x in p_values_significant:
         output_file.write(str(x[0]) + ':' + str(x[1]) + '\n')
-    output_file.write('</B>'+ '\n')
-    output_file.write('<C>'+ '\n')
-    output_file.write('Lambda_gc:' + str(gc) + '\n')
+    output_file.write('</B>' + '\n')
+    output_file.write('<C>' + '\n')
+    output_file.write('AVG_K:' + str(avg_k) + '\n')
     output_file.write('</C>' + '\n')
 
 
